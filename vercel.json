@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/get-price.js": {
-      "allowedDomains": ["price.jup.ag"]
-    }
-  }
-}
