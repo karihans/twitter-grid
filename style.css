@@ -126,10 +126,11 @@ hr { border: 1px solid #eee; margin: 15px 0; }
 
 /* Satılmış bir kare */
 .grid-square.sold {
-    cursor: not-allowed; /* Tıklamayı engelle */
-    border: none; /* Kenarlığı kaldır */
+    cursor: pointer; /* Artık tıklanabilir olduğunu belirtelim */
+    border: none;
     padding: 0;
 }
+
 
 /* İçinde resim OLMAYAN satılmış kareleri kırmızı yap (Flash efektini önler) */
 .grid-square.sold:not(:has(.pfp-image)) {

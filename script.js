@@ -9,7 +9,7 @@ const twitterUsernameInput = document.getElementById('twitter-username');
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
 let isFetchingPrice = false;
-let soldSquaresData = {}; // Satılmış karelerin verisini saklar (örn: { 'square-123': { owner: 'elonmusk' } })
+let soldSquaresData = {}; // Satılmış karelerin verisini saklar
 
 // --- AYARLAR ---
 const gridSize = 200;
@@ -20,37 +20,42 @@ const PRICE_IN_USD = 1.0;
 // FONKSİYONLAR
 // =================================================================
 
-// Sayfa yüklendiğinde satılmış kareleri getirir ve işaretler
 async function loadAndMarkSoldSquares() {
     console.log('Satılmış kareler ve profil resimleri yükleniyor...');
     try {
         const response = await fetch('/api/get-sold-squares');
-        if (!response.ok) {
-            throw new Error('Satılmış kare verileri alınamadı.');
-        }
+        if (!response.ok) { throw new Error('Satılmış kare verileri alınamadı.'); }
         const soldSquares = await response.json();
 
-        // Sayaç elementini bul ve güncelle
         const soldCountElement = document.getElementById('sold-count');
         if (soldCountElement) {
             soldCountElement.textContent = soldSquares.length;
         }
 
-        // Gelen her bir satılmış kare verisi için
         soldSquares.forEach(item => {
-            // Gelen veriyi global objemize kaydedelim
-            soldSquaresData[item.square_id] = {
-                owner: item.owner_twitter_username
-            };
+            if(item.square_id && item.owner_twitter_username) {
+                soldSquaresData[item.square_id] = { owner: item.owner_twitter_username };
+            }
 
             const squareElement = document.getElementById(item.square_id);
             if (squareElement) {
-                if (item.owner_twitter_pfp_url) {
+                if (item.owner_twitter_pfp_url && item.owner_twitter_username) {
                     squareElement.innerHTML = '';
-                    const pfpImage = document.createElement('img');
+                    
+                    // YENİ: Link elementi (<a>) oluştur
+                    const link = document.createElement('a');
+                    link.href = `https://twitter.com/${item.owner_twitter_username}`;
+                    link.target = '_blank'; // Linkin yeni sekmede açılması için
+                    link.rel = 'noopener noreferrer'; // Güvenlik için
+
+                    const pfpImage = document.createElement('img' );
                     pfpImage.src = item.owner_twitter_pfp_url;
                     pfpImage.classList.add('pfp-image');
-                    squareElement.appendChild(pfpImage);
+                    
+                    // Resmi linkin içine koy
+                    link.appendChild(pfpImage);
+                    // Linki de karenin içine koy
+                    squareElement.appendChild(link);
                 }
                 squareElement.classList.add('sold');
                 squareElement.classList.remove('selected');
@@ -63,7 +68,6 @@ async function loadAndMarkSoldSquares() {
     }
 }
 
-// Izgarayı oluşturan fonksiyon
 function createGrid() {
     for (let i = 0; i < totalSquares; i++) {
         const square = document.createElement('div');
@@ -73,22 +77,21 @@ function createGrid() {
     }
 }
 
-// Kareye tıklama olayı
 function handleSquareClick(event) {
     const clickedSquare = event.target.closest('.grid-square');
     if (!clickedSquare) return;
 
-    // Eğer satılmış bir kareye tıklandıysa, sahibini göster
+    // Eğer satılmış bir kareye tıklandıysa, artık bir şey yapmaya gerek yok
+    // çünkü link kendi işini yapacak. İsterseniz bilgi penceresini yine de gösterebiliriz.
     if (clickedSquare.classList.contains('sold')) {
-        const squareId = clickedSquare.id;
-        const squareData = soldSquaresData[squareId];
-        if (squareData && squareData.owner) {
-            alert(`Bu kare @${squareData.owner} tarafından satın alınmıştır.`);
-        }
-        return;
+        // const squareId = clickedSquare.id;
+        // const squareData = soldSquaresData[squareId];
+        // if (squareData && squareData.owner) {
+        //     // İsteğe bağlı: alert(`Bu kare @${squareData.owner} tarafından satın alınmıştır.`);
+        // }
+        return; // Linkin çalışmasına izin ver, fonksiyonu bitir.
     }
 
-    // Seçimle ilgili kodlar
     if (selectedSquare) {
         selectedSquare.classList.remove('selected');
     }
@@ -100,16 +103,9 @@ function handleSquareClick(event) {
     }
 }
 
-// "Satın Al" butonuna tıklandığında çalışan fonksiyon
 async function handlePurchaseClick() {
-    if (!selectedSquare) {
-        alert('Lütfen satın almak için ızgaradan bir kare seçin.');
-        return;
-    }
-    if (!twitterUsernameInput.value) {
-        alert('Lütfen Twitter kullanıcı adınızı girin.');
-        return;
-    }
+    if (!selectedSquare) { alert('Lütfen satın almak için ızgaradan bir kare seçin.'); return; }
+    if (!twitterUsernameInput.value) { alert('Lütfen Twitter kullanıcı adınızı girin.'); return; }
     if (isFetchingPrice) return;
 
     isFetchingPrice = true;
@@ -133,7 +129,6 @@ async function handlePurchaseClick() {
     }
 }
 
-// Onay modalını açan ve bilgileri dolduran fonksiyon
 function openConfirmationModal(username, amount, tokenSymbol) {
     document.getElementById('modal-square-id').textContent = selectedSquare.id;
     document.getElementById('modal-twitter-username').textContent = username;
@@ -144,12 +139,10 @@ function openConfirmationModal(username, amount, tokenSymbol) {
     modal.classList.remove('hidden');
 }
 
-// Modal penceresini kapatan fonksiyon
 function closeModal() {
     modal.classList.add('hidden');
 }
 
-// Son onayı ve isteği gönderen fonksiyon (Çift tıklama engelli)
 async function handleSubmit() {
     submitPurchaseButton.removeEventListener('click', handleSubmit);
     submitPurchaseButton.disabled = true;
@@ -159,10 +152,7 @@ async function handleSubmit() {
         const twitterUsername = document.getElementById('modal-twitter-username').textContent;
         const transactionId = document.getElementById('transaction-id').value;
 
-        if (!transactionId) {
-            alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
-            return;
-        }
+        if (!transactionId) { alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.'); return; }
 
         const response = await fetch('/api/save-square', {
             method: 'POST',
@@ -180,23 +170,32 @@ async function handleSubmit() {
         alert('İsteğiniz başarıyla veritabanına kaydedildi!');
         closeModal();
 
-        // Sayacı bir artır
         const soldCountElement = document.getElementById('sold-count');
         if (soldCountElement) {
             soldCountElement.textContent = parseInt(soldCountElement.textContent || '0') + 1;
         }
 
-        // Yeni veriyi global state'e ekle
-        soldSquaresData[selectedSquare.id] = { owner: twitterUsername };
+        if(selectedSquare) {
+            soldSquaresData[selectedSquare.id] = { owner: twitterUsername };
+        }
 
         if (selectedSquare) {
             const pfpUrl = result.data.owner_twitter_pfp_url;
             if (pfpUrl) {
                 selectedSquare.innerHTML = '';
-                const pfpImage = document.createElement('img');
+                
+                // YENİ: Yeni satılan kare için de link oluştur
+                const link = document.createElement('a');
+                link.href = `https://twitter.com/${twitterUsername}`;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+
+                const pfpImage = document.createElement('img' );
                 pfpImage.src = pfpUrl;
                 pfpImage.classList.add('pfp-image');
-                selectedSquare.appendChild(pfpImage);
+                
+                link.appendChild(pfpImage);
+                selectedSquare.appendChild(link);
             }
             selectedSquare.classList.add('sold');
             selectedSquare.classList.remove('selected');
@@ -215,14 +214,11 @@ async function handleSubmit() {
     }
 }
 
-// --- ANA ÇALIŞTIRMA KODU ---
-
 function initializeApp() {
     console.log('Uygulama başlatılıyor...');
     createGrid();
     loadAndMarkSoldSquares();
 
-    // Olay dinleyicilerini SADECE BİR KEZ burada ekle
     gridContainer.addEventListener('click', handleSquareClick);
     purchaseButton.addEventListener('click', handlePurchaseClick);
     closeModalButton.addEventListener('click', closeModal);
@@ -230,6 +226,4 @@ function initializeApp() {
     console.log('Olay dinleyicileri eklendi.');
 }
 
-// Bu standart yapı, tüm HTML içeriği yüklendikten sonra
-// initializeApp fonksiyonunun SADECE BİR KEZ çalışmasını garanti eder.
 document.addEventListener('DOMContentLoaded', initializeApp);
