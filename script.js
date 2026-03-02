@@ -8,15 +8,44 @@ const twitterUsernameInput = document.getElementById('twitter-username');
 
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
-let isFetchingPrice = false; // Fiyat alınırken tekrar butona basılmasını engellemek için
+let isFetchingPrice = false;
 
 // --- AYARLAR ---
 const gridSize = 200;
 const totalSquares = gridSize * gridSize;
-const PRICE_IN_USD = 1.0; // Her karenin USD cinsinden fiyatı
+const PRICE_IN_USD = 1.0;
 
-// --- FONKSİYONLAR ---
+// =================================================================
+// YENİ FONKSİYON: Sayfa yüklendiğinde satılmış kareleri getirir ve işaretler
+// =================================================================
+async function loadAndMarkSoldSquares() {
+  console.log('Satılmış kareler yükleniyor...');
+  try {
+    const response = await fetch('/api/get-sold-squares');
+    if (!response.ok) {
+      throw new Error('Satılmış kare verileri alınamadı.');
+    }
+    const soldSquares = await response.json(); // [{ square_id: 'square-123' }, ...]
 
+    // Gelen her bir satılmış kare verisi için
+    soldSquares.forEach(item => {
+      const squareElement = document.getElementById(item.square_id);
+      if (squareElement) {
+        squareElement.classList.add('sold');
+        squareElement.classList.remove('selected'); // Olası seçimleri temizle
+      }
+    });
+    console.log(`${soldSquares.length} adet satılmış kare işaretlendi.`);
+
+  } catch (error) {
+    console.error('Satılmış kareler yüklenirken hata:', error);
+    // Bu hatanın kullanıcıyı engellememesi için alert göstermeyebiliriz.
+  }
+}
+
+// =================================================================
+// Izgarayı oluşturan fonksiyon
+// =================================================================
 function createGrid() {
     for (let i = 0; i < totalSquares; i++) {
         const square = document.createElement('div');
@@ -26,14 +55,19 @@ function createGrid() {
     }
 }
 
+// =================================================================
+// Kareye tıklama olayı
+// =================================================================
 function handleSquareClick(event) {
     const clickedSquare = event.target;
-    if (!clickedSquare.classList.contains('grid-square')) return;
+    // YENİ: Eğer satılmış bir kareye tıklandıysa hiçbir şey yapma
+    if (!clickedSquare.classList.contains('grid-square') || clickedSquare.classList.contains('sold')) {
+        return;
+    }
 
     if (selectedSquare) {
         selectedSquare.classList.remove('selected');
     }
-
     if (selectedSquare === clickedSquare) {
         selectedSquare = null;
     } else {
@@ -42,7 +76,9 @@ function handleSquareClick(event) {
     }
 }
 
-// "Satın Al" butonuna tıklandığında çalışan ANA FONKSİYON
+// Diğer fonksiyonlar (handlePurchaseClick, openConfirmationModal, closeModal, handleSubmit) aynı kalabilir.
+// Ama kod bütünlüğü için onları da aşağıya ekliyorum.
+
 async function handlePurchaseClick() {
     if (!selectedSquare) {
         alert('Lütfen satın almak için ızgaradan bir kare seçin.');
@@ -52,104 +88,71 @@ async function handlePurchaseClick() {
         alert('Lütfen Twitter kullanıcı adınızı girin.');
         return;
     }
-    if (isFetchingPrice) return; // Zaten fiyat alınıyorsa, tekrar çalıştırma
+    if (isFetchingPrice) return;
 
     isFetchingPrice = true;
     purchaseButton.textContent = 'Fiyat Hesaplanıyor...';
     purchaseButton.disabled = true;
 
     try {
-        // 1. Kendi API'mizi çağırarak anlık fiyatı al
         const response = await fetch('/api/get-price');
         const priceData = await response.json();
-
-        if (!response.ok) {
-            throw new Error(priceData.message || 'Fiyat alınamadı.');
-        }
-
+        if (!response.ok) { throw new Error(priceData.message || 'Fiyat alınamadı.'); }
         const tokenPriceInUsd = priceData.price_in_usd;
-        
-        // 2. 1 USD'nin kaç token ettiğini hesapla
-        // Kendi token'ınız SOL değilse, buradaki mantık değişecek. Şimdilik SOL varsayıyoruz.
-        const amountOfTokenNeeded = (PRICE_IN_USD / tokenPriceInUsd).toFixed(6); // Virgülden sonra 6 basamak
-
-        // 3. Onay modalını bu bilgilerle aç
+        const amountOfTokenNeeded = (PRICE_IN_USD / tokenPriceInUsd).toFixed(6);
         openConfirmationModal(twitterUsernameInput.value, amountOfTokenNeeded, priceData.token);
-
     } catch (error) {
         console.error('Satın alma işlemi sırasında hata:', error);
         alert(`Bir hata oluştu: ${error.message}`);
     } finally {
-        // İşlem bitince butonu eski haline getir
         isFetchingPrice = false;
         purchaseButton.textContent = 'Satın Al';
         purchaseButton.disabled = false;
     }
 }
 
-// Onay modalını açan ve bilgileri dolduran fonksiyon
 function openConfirmationModal(username, amount, tokenSymbol) {
     document.getElementById('modal-square-id').textContent = selectedSquare.id;
     document.getElementById('modal-twitter-username').textContent = username;
-    
-    // Yeni eklenen ödeme miktarı alanı
     const paymentAmountElement = document.querySelector('.payment-info #payment-amount');
     if (paymentAmountElement) {
         paymentAmountElement.textContent = `${amount} ${tokenSymbol}`;
     }
-    
     modal.classList.remove('hidden');
 }
-
-// ... (Diğer fonksiyonlar aynı kalabilir, ama temizlik için hepsini veriyorum) ...
 
 function closeModal() {
     modal.classList.add('hidden');
 }
 
-// Son onayı ve isteği gönderen YENİ fonksiyon
 async function handleSubmit() {
     const twitterUsername = document.getElementById('modal-twitter-username').textContent;
     const transactionId = document.getElementById('transaction-id').value;
-
     if (!transactionId) {
         alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
         return;
     }
-
     submitPurchaseButton.disabled = true;
     submitPurchaseButton.textContent = 'Kaydediliyor...';
-
     try {
-        // YENİ: Kendi /api/save-square API'mize istek gönderiyoruz
         const response = await fetch('/api/save-square', {
-            method: 'POST', // İstek metodu
-            headers: {
-                'Content-Type': 'application/json', // Gönderdiğimiz verinin tipini belirtiyoruz
-            },
-            body: JSON.stringify({ // Gönderilecek veriyi JSON formatına çeviriyoruz
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 square_id: selectedSquare.id,
                 twitter_username: twitterUsername,
                 transaction_id: transactionId
             }),
         });
-
-        const result = await response.json(); // API'den gelen cevabı alıyoruz
-
-        // Eğer API'miz bir hata döndürdüyse (örn: 409 Conflict)
-        if (!response.ok) {
-            throw new Error(result.message || 'Bilinmeyen bir hata oluştu.');
-        }
-
+        const result = await response.json();
+        if (!response.ok) { throw new Error(result.message || 'Bilinmeyen bir hata oluştu.'); }
         alert('İsteğiniz başarıyla veritabanına kaydedildi!');
-        
         closeModal();
         if (selectedSquare) {
             selectedSquare.classList.add('sold');
             selectedSquare.classList.remove('selected');
             selectedSquare = null;
         }
-
     } catch (error) {
         console.error('İstek gönderilirken hata:', error);
         alert(`Hata: ${error.message}`);
@@ -159,10 +162,20 @@ async function handleSubmit() {
     }
 }
 
+// =================================================================
+// --- ANA ÇALIŞTIRMA KODU ---
+// =================================================================
+function initializeApp() {
+    console.log('Uygulama başlatılıyor...');
+    createGrid(); // Önce ızgarayı oluştur
+    loadAndMarkSoldSquares(); // Sonra satılmış kareleri işaretle
 
-// --- OLAY DİNLEYİCİLERİ ---
-createGrid();
-gridContainer.addEventListener('click', handleSquareClick);
-purchaseButton.addEventListener('click', handlePurchaseClick);
-closeModalButton.addEventListener('click', closeModal);
-submitPurchaseButton.addEventListener('click', handleSubmit);
+    // Olay dinleyicilerini en sona ekle
+    gridContainer.addEventListener('click', handleSquareClick);
+    purchaseButton.addEventListener('click', handlePurchaseClick);
+    closeModalButton.addEventListener('click', closeModal);
+    submitPurchaseButton.addEventListener('click', handleSubmit);
+}
+
+// Sayfa yüklendiğinde uygulamayı başlat
+initializeApp();
