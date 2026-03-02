@@ -18,30 +18,46 @@ const PRICE_IN_USD = 1.0;
 // =================================================================
 // YENİ FONKSİYON: Sayfa yüklendiğinde satılmış kareleri getirir ve işaretler
 // =================================================================
+// YENİ ve GÜNCELLENMİŞ FONKSİYON
 async function loadAndMarkSoldSquares() {
-  console.log('Satılmış kareler yükleniyor...');
+  console.log('Satılmış kareler ve profil resimleri yükleniyor...');
   try {
+    // API'miz artık pfp url'ini de gönderiyor
     const response = await fetch('/api/get-sold-squares');
     if (!response.ok) {
       throw new Error('Satılmış kare verileri alınamadı.');
     }
-    const soldSquares = await response.json(); // [{ square_id: 'square-123' }, ...]
+    const soldSquares = await response.json(); // [{ square_id: '...', owner_twitter_pfp_url: '...' }, ...]
 
-    // Gelen her bir satılmış kare verisi için
     soldSquares.forEach(item => {
       const squareElement = document.getElementById(item.square_id);
       if (squareElement) {
+        // Eğer resim URL'si varsa, kareye resmi ekle
+        if (item.owner_twitter_pfp_url) {
+          // Karenin içini temizle (önemli)
+          squareElement.innerHTML = ''; 
+          
+          // Yeni bir resim elementi oluştur
+          const pfpImage = document.createElement('img');
+          pfpImage.src = item.owner_twitter_pfp_url;
+          pfpImage.classList.add('pfp-image'); // Stil vermek için class ekle
+          
+          // Resmi karenin içine ekle
+          squareElement.appendChild(pfpImage);
+        }
+        
+        // Kareyi 'sold' olarak işaretle (tıklamaları engellemek için hala gerekli)
         squareElement.classList.add('sold');
-        squareElement.classList.remove('selected'); // Olası seçimleri temizle
+        squareElement.classList.remove('selected');
       }
     });
-    console.log(`${soldSquares.length} adet satılmış kare işaretlendi.`);
+    console.log(`${soldSquares.length} adet satılmış kare işlendi.`);
 
   } catch (error) {
     console.error('Satılmış kareler yüklenirken hata:', error);
-    // Bu hatanın kullanıcıyı engellememesi için alert göstermeyebiliriz.
   }
 }
+
 
 // =================================================================
 // Izgarayı oluşturan fonksiyon
@@ -148,11 +164,30 @@ async function handleSubmit() {
         if (!response.ok) { throw new Error(result.message || 'Bilinmeyen bir hata oluştu.'); }
         alert('İsteğiniz başarıyla veritabanına kaydedildi!');
         closeModal();
+        // handleSubmit fonksiyonunun içindeki 'try' bloğunun sonu...
+
+        alert('İsteğiniz başarıyla veritabanına kaydedildi!');
+        closeModal();
+
+        // Bu kısmı güncelliyoruz
         if (selectedSquare) {
+            // API'den dönen verinin içinde pfp url'i olmalı
+            const pfpUrl = result.data.owner_twitter_pfp_url;
+
+            if (pfpUrl) {
+                selectedSquare.innerHTML = ''; // İçini temizle
+                const pfpImage = document.createElement('img');
+                pfpImage.src = pfpUrl;
+                pfpImage.classList.add('pfp-image');
+                selectedSquare.appendChild(pfpImage);
+            }
+
             selectedSquare.classList.add('sold');
             selectedSquare.classList.remove('selected');
             selectedSquare = null;
         }
+// ... fonksiyonun geri kalanı aynı
+
     } catch (error) {
         console.error('İstek gönderilirken hata:', error);
         alert(`Hata: ${error.message}`);
