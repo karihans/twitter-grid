@@ -9,13 +9,26 @@
 }
 
 body {
-    display: grid;
-    grid-template-columns: repeat(200, 50px);
     background-color: var(--background-dark);
     margin: 0;
-    padding-bottom: 100px; /* Eylem çubuğu için daha fazla boşluk */
-    width: 10000px;
     font-family: 'Space Grotesk', sans-serif;
+    /* Body'den ızgara stillerini kaldırdık */
+}
+
+/* YENİ: Izgara sarmalayıcısı */
+#grid-wrapper {
+    width: 100%;
+    height: 100vh; /* Ekran yüksekliği kadar */
+    overflow: auto; /* Hem yatay hem dikey kaydırma sağlar */
+    padding-bottom: 100px; /* Eylem çubuğu için boşluk */
+    box-sizing: border-box;
+}
+
+/* YENİ: Izgara konteyneri */
+#grid-container {
+    display: grid;
+    grid-template-columns: repeat(200, 50px);
+    width: 10000px; /* 200 sütun * 50px */
 }
 
 /* --- IZGARA ve KARE STİLLERİ --- */

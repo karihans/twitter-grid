@@ -1,5 +1,6 @@
 // --- ELEMENTLER ---
-const gridContainer = document.body;
+// YENİ: Izgaranın ekleneceği doğru konteyneri seçiyoruz
+const gridContainer = document.getElementById('grid-container'); 
 const purchaseButton = document.getElementById('purchase-button');
 const modal = document.getElementById('confirmation-modal');
 const closeModalButton = document.getElementById('close-modal');
@@ -9,7 +10,7 @@ const twitterUsernameInput = document.getElementById('twitter-username');
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
 let isFetchingPrice = false;
-let soldSquaresData = {}; // Satılmış karelerin verisini saklar
+let soldSquaresData = {}; 
 
 // --- AYARLAR ---
 const gridSize = 200;
@@ -42,19 +43,16 @@ async function loadAndMarkSoldSquares() {
                 if (item.owner_twitter_pfp_url && item.owner_twitter_username) {
                     squareElement.innerHTML = '';
                     
-                    // YENİ: Link elementi (<a>) oluştur
                     const link = document.createElement('a');
                     link.href = `https://twitter.com/${item.owner_twitter_username}`;
-                    link.target = '_blank'; // Linkin yeni sekmede açılması için
-                    link.rel = 'noopener noreferrer'; // Güvenlik için
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
 
                     const pfpImage = document.createElement('img' );
                     pfpImage.src = item.owner_twitter_pfp_url;
                     pfpImage.classList.add('pfp-image');
                     
-                    // Resmi linkin içine koy
                     link.appendChild(pfpImage);
-                    // Linki de karenin içine koy
                     squareElement.appendChild(link);
                 }
                 squareElement.classList.add('sold');
@@ -69,6 +67,7 @@ async function loadAndMarkSoldSquares() {
 }
 
 function createGrid() {
+    // gridContainer artık doğru elementi referans aldığı için bu fonksiyon değişmeden çalışır.
     for (let i = 0; i < totalSquares; i++) {
         const square = document.createElement('div');
         square.classList.add('grid-square');
@@ -81,15 +80,8 @@ function handleSquareClick(event) {
     const clickedSquare = event.target.closest('.grid-square');
     if (!clickedSquare) return;
 
-    // Eğer satılmış bir kareye tıklandıysa, artık bir şey yapmaya gerek yok
-    // çünkü link kendi işini yapacak. İsterseniz bilgi penceresini yine de gösterebiliriz.
     if (clickedSquare.classList.contains('sold')) {
-        // const squareId = clickedSquare.id;
-        // const squareData = soldSquaresData[squareId];
-        // if (squareData && squareData.owner) {
-        //     // İsteğe bağlı: alert(`Bu kare @${squareData.owner} tarafından satın alınmıştır.`);
-        // }
-        return; // Linkin çalışmasına izin ver, fonksiyonu bitir.
+        return; 
     }
 
     if (selectedSquare) {
@@ -124,14 +116,14 @@ async function handlePurchaseClick() {
         alert(`Bir hata oluştu: ${error.message}`);
     } finally {
         isFetchingPrice = false;
-        purchaseButton.textContent = 'Satın Al';
+        purchaseButton.textContent = 'KARENİ AL';
         purchaseButton.disabled = false;
     }
 }
 
 function openConfirmationModal(username, amount, tokenSymbol) {
     document.getElementById('modal-square-id').textContent = selectedSquare.id;
-    document.getElementById('modal-twitter-username').textContent = username;
+    document.getElementById('modal-twitter-username').textContent = `@${username}`;
     const paymentAmountElement = document.querySelector('.payment-info #payment-amount');
     if (paymentAmountElement) {
         paymentAmountElement.textContent = `${amount} ${tokenSymbol}`;
@@ -149,7 +141,7 @@ async function handleSubmit() {
     submitPurchaseButton.textContent = 'Kaydediliyor...';
 
     try {
-        const twitterUsername = document.getElementById('modal-twitter-username').textContent;
+        const twitterUsername = document.getElementById('modal-twitter-username').textContent.substring(1); // @ işaretini kaldır
         const transactionId = document.getElementById('transaction-id').value;
 
         if (!transactionId) { alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.'); return; }
@@ -167,7 +159,7 @@ async function handleSubmit() {
         const result = await response.json();
         if (!response.ok) { throw new Error(result.message || 'Bilinmeyen bir hata oluştu.'); }
 
-        alert('İsteğiniz başarıyla veritabanına kaydedildi!');
+        alert('İsteğiniz başarıyla duvara eklendi!');
         closeModal();
 
         const soldCountElement = document.getElementById('sold-count');
@@ -184,7 +176,6 @@ async function handleSubmit() {
             if (pfpUrl) {
                 selectedSquare.innerHTML = '';
                 
-                // YENİ: Yeni satılan kare için de link oluştur
                 const link = document.createElement('a');
                 link.href = `https://twitter.com/${twitterUsername}`;
                 link.target = '_blank';
@@ -207,7 +198,7 @@ async function handleSubmit() {
         alert(`Hata: ${error.message}`);
     } finally {
         submitPurchaseButton.disabled = false;
-        submitPurchaseButton.textContent = 'Onaylıyorum ve İsteği Gönder';
+        submitPurchaseButton.textContent = 'DUVARA EKLE';
         setTimeout(() => {
             submitPurchaseButton.addEventListener('click', handleSubmit);
         }, 100);
@@ -219,6 +210,8 @@ function initializeApp() {
     createGrid();
     loadAndMarkSoldSquares();
 
+    // Olay dinleyicisi artık gridContainer yerine #grid-wrapper'a eklenebilir
+    // ama gridContainer'da kalması daha spesifik ve doğrudur.
     gridContainer.addEventListener('click', handleSquareClick);
     purchaseButton.addEventListener('click', handlePurchaseClick);
     closeModalButton.addEventListener('click', closeModal);
