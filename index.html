@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grid</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Izgara JavaScript tarafından buraya eklenecek -->
+
+    <!-- SAYFANIN ALTINDAKİ SABİT EYLEM ÇUBUĞU -->
+    <div id="action-bar">
+        <div class="action-bar-content">
+            <div class="input-group">
+                <label for="twitter-username">Twitter Kullanıcı Adı:</label>
+                <input type="text" id="twitter-username" placeholder="@ olmadan girin...">
+            </div>
+            <button id="purchase-button">Satın Al</button>
+        </div>
+    </div>
+
+    <!-- ONAY MODAL PENCERESİ (Başlangıçta gizli) -->
+    <div id="confirmation-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2 id="modal-title">Satın Alma Onayı</h2>
+            <p>Lütfen aşağıdaki bilgileri kullanarak ödemeyi yapın ve işlem kimliğini girin.</p>
+            
+            <div class="payment-info">
+                <p><strong>Seçilen Kare:</strong> <span id="modal-square-id"></span></p>
+                <p><strong>Twitter Hesabı:</strong> <span id="modal-twitter-username"></span></p>
+                <hr>
+                <p><strong>Ödeme Miktarı:</strong> 0.1 SOL</p>
+                <p><strong>Cüzdan Adresi:</strong> [SENİN_SOLANA_CUZDAN_ADRESİN]</p>
+            </div>
+
+            <div class="form-group">
+                <label for="transaction-id">İşlem Kimliği (TX ID):</label>
+                <input type="text" id="transaction-id" placeholder="Ödeme sonrası aldığınız işlem kimliği">
+            </div>
+
+            <button id="submit-purchase">Onaylıyorum ve İsteği Gönder</button>
+            <button id="close-modal">İptal</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

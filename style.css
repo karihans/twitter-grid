@@ -1,0 +1,103 @@
+/* Sayfanın temel ayarları */
+body {
+    display: grid;
+    grid-template-columns: repeat(200, 30px);
+    background-color: #000033;
+    margin: 0;
+    /* Eylem çubuğu için altta boşluk bırak */
+    padding-bottom: 80px; 
+    width: 6000px;
+}
+
+/* Tek bir karenin stili */
+.grid-square {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #1a1a4a; 
+    box-sizing: border-box;
+    cursor: pointer; /* Üzerine gelince el işareti çıksın */
+}
+
+/* YENİ: Kullanıcının seçtiği karenin stili */
+.grid-square.selected {
+    border: 2px solid #00ff00; /* Parlak yeşil kenarlık */
+    box-shadow: 0 0 10px #00ff00; /* Yeşil bir parlama efekti */
+    transform: scale(1.1); /* Hafifçe büyüt */
+    z-index: 10;
+}
+
+/* --- Eylem Çubuğu Stilleri --- */
+#action-bar {
+    position: fixed; /* Sayfa kaysa bile sabit kalır */
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #111;
+    border-top: 1px solid #444;
+    padding: 15px;
+    box-sizing: border-box;
+    z-index: 999; /* Izgaranın üstünde, modalın altında */
+}
+
+.action-bar-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px; /* Elemanlar arası boşluk */
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#action-bar label {
+    color: #fff;
+    font-family: sans-serif;
+}
+
+#action-bar input {
+    padding: 8px;
+    border: 1px solid #555;
+    background-color: #222;
+    color: #fff;
+    border-radius: 4px;
+}
+
+#action-bar button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* --- Modal Stilleri (Öncekiyle 거의 aynı) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background-color: #fff; color: #333; padding: 30px;
+    border-radius: 8px; width: 90%; max-width: 500px;
+    text-align: left; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+.modal-content h2 { margin-top: 0; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; }
+.form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.modal-content button { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px; }
+#submit-purchase { background-color: #28a745; color: white; }
+#close-modal { background-color: #ccc; }
+.hidden { display: none; }
+.payment-info { margin: 20px 0; }
+.payment-info p { margin: 5px 0; }
+hr { border: 1px solid #eee; margin: 15px 0; }
+#modal-square-id, #modal-twitter-username { font-weight: bold; }
