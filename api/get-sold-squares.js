@@ -18,7 +18,7 @@ export default async function handler(request, response) {
     // Bize şimdilik sadece hangi karelerin satıldığı bilgisi lazım.
     const { data, error } = await supabase
       .from('squares')
-      .select('square_id');
+      .select('square_id, owner_twitter_pfp_url'); // Bu satırı güncelleyin
 
     // Eğer Supabase bir hata döndürürse
     if (error) {
