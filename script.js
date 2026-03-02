@@ -108,9 +108,55 @@ function closeModal() {
 }
 
 // Son onayı ve isteği gönderen YENİ fonksiyon
-function handleSubmit() {
-    console.log("İstek gönderildi ama henüz kayıt fonksiyonu yazılmadı.");
-    closeModal();
+async function handleSubmit() {
+    const twitterUsername = document.getElementById('modal-twitter-username').textContent;
+    const transactionId = document.getElementById('transaction-id').value;
+
+    if (!transactionId) {
+        alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
+        return;
+    }
+
+    submitPurchaseButton.disabled = true;
+    submitPurchaseButton.textContent = 'Kaydediliyor...';
+
+    try {
+        // YENİ: Kendi /api/save-square API'mize istek gönderiyoruz
+        const response = await fetch('/api/save-square', {
+            method: 'POST', // İstek metodu
+            headers: {
+                'Content-Type': 'application/json', // Gönderdiğimiz verinin tipini belirtiyoruz
+            },
+            body: JSON.stringify({ // Gönderilecek veriyi JSON formatına çeviriyoruz
+                square_id: selectedSquare.id,
+                twitter_username: twitterUsername,
+                transaction_id: transactionId
+            }),
+        });
+
+        const result = await response.json(); // API'den gelen cevabı alıyoruz
+
+        // Eğer API'miz bir hata döndürdüyse (örn: 409 Conflict)
+        if (!response.ok) {
+            throw new Error(result.message || 'Bilinmeyen bir hata oluştu.');
+        }
+
+        alert('İsteğiniz başarıyla veritabanına kaydedildi!');
+        
+        closeModal();
+        if (selectedSquare) {
+            selectedSquare.classList.add('sold');
+            selectedSquare.classList.remove('selected');
+            selectedSquare = null;
+        }
+
+    } catch (error) {
+        console.error('İstek gönderilirken hata:', error);
+        alert(`Hata: ${error.message}`);
+    } finally {
+        submitPurchaseButton.disabled = false;
+        submitPurchaseButton.textContent = 'Onaylıyorum ve İsteği Gönder';
+    }
 }
 
 
