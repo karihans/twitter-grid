@@ -1,43 +1,57 @@
-// Bu fonksiyon, Jupiter API'sini kullanarak bir token'ın anlık fiyatını getirir.
+// Bu satır, fonksiyonun Edge Runtime'da çalışmasını sağlar. Bu kritik.
 export const config = {
   runtime: 'edge',
 };
 
-export default async function handler(request, response) {
+// Edge fonksiyonları sadece 'request' parametresini alır. 'response' yoktur.
+export default async function handler(request) {
   try {
-    // Jupiter'in fiyat API'sinin adresi.
-    // ?ids=SOL&vsToken=USDC -> SOL'un fiyatını USDC cinsinden istiyoruz.
     const apiUrl = 'https://price.jup.ag/v4/price?ids=SOL&vsToken=USDC';
 
-    // Jupiter API'sine bir istek gönderiyoruz.
+    // fetch işlemi aynı kalır.
     const apiResponse = await fetch(apiUrl );
 
-    // Eğer API'den başarılı bir cevap gelmezse, hata fırlat.
     if (!apiResponse.ok) {
-      throw new Error(`Jupiter API'den hata alındı: ${apiResponse.statusText}`);
+      // Hata mesajını daha bilgilendirici yapalım.
+      const errorText = await apiResponse.text();
+      throw new Error(`Jupiter API Error (${apiResponse.status}): ${errorText}`);
     }
 
-    // Gelen cevabı JSON formatına çeviriyoruz.
-    const data = await await apiResponse.json();
-
-    // Gelen veriden fiyat bilgisini alıyoruz.
-    // Örnek veri: { data: { SOL: { price: 135.12, ... } }, ... }
+    const data = await apiResponse.json();
     const solPrice = data.data.SOL.price;
 
-    // Her şey yolundaysa, istemciye (tarayıcıya) fiyat bilgisini gönder.
-    response.status(200).json({
-      token: 'SOL',
-      price_in_usd: solPrice,
-      message: `1 SOL anlık olarak ${solPrice} USDC değerindedir.`
-    });
+    // Başarılı cevap, 'new Response' ile oluşturulur. Bu doğru yöntem.
+    return new Response(
+      JSON.stringify({
+        token: 'SOL',
+        price_in_usd: solPrice,
+        message: `1 SOL anlık olarak ${solPrice} USDC değerindedir.`
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 's-maxage=60, stale-while-revalidate', // Fiyatı 60 saniye cache'le
+        },
+      }
+    );
 
   } catch (error) {
-    // Eğer bir hata oluşursa (API'ye ulaşılamazsa vb.),
-    // hatayı konsola yaz ve istemciye bir hata mesajı gönder.
-    console.error('Fiyat alınırken bir hata oluştu:', error);
-    response.status(500).json({
-      message: 'Token fiyatı alınırken sunucu tarafında bir hata oluştu.',
-      error: error.message
-    });
+    // Hataları yakalayıp loglamak çok önemlidir.
+    console.error('API Hatası:', error);
+
+    // Hata durumunda da 'new Response' ile cevap oluşturulur.
+    return new Response(
+      JSON.stringify({
+        message: 'Token fiyatı alınırken bir hata oluştu.',
+        error: error.message,
+      }),
+      {
+        status: 500, // Sunucu hatası olduğunu belirtir.
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
   }
 }
