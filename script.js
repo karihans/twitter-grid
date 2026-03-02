@@ -200,17 +200,21 @@ async function handleSubmit() {
 // =================================================================
 // --- ANA ÇALIŞTIRMA KODU ---
 // =================================================================
+// --- ANA ÇALIŞTIRMA KODU ---
+
 function initializeApp() {
     console.log('Uygulama başlatılıyor...');
-    createGrid(); // Önce ızgarayı oluştur
-    loadAndMarkSoldSquares(); // Sonra satılmış kareleri işaretle
+    createGrid();
+    loadAndMarkSoldSquares();
 
-    // Olay dinleyicilerini en sona ekle
+    // Olay dinleyicilerini SADECE BİR KEZ burada ekle
     gridContainer.addEventListener('click', handleSquareClick);
     purchaseButton.addEventListener('click', handlePurchaseClick);
     closeModalButton.addEventListener('click', closeModal);
     submitPurchaseButton.addEventListener('click', handleSubmit);
+    console.log('Olay dinleyicileri eklendi.');
 }
 
-// Sayfa yüklendiğinde uygulamayı başlat
-initializeApp();
+// Bu standart yapı, tüm HTML içeriği yüklendikten sonra
+// initializeApp fonksiyonunun SADECE BİR KEZ çalışmasını garanti eder.
+document.addEventListener('DOMContentLoaded', initializeApp);

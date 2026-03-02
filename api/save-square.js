@@ -1,27 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
-import * as cheerio from 'cheerio'; // Cheerio kütüphanesini içe aktar
+
+// Unavatar.io, bir kullanıcı adından doğrudan profil resmi URL'sini verir.
+// ?fallback=false -> eğer resim bulamazsa hata vermesi veya boş dönmesi için.
+const getPfpUrl = (username) => `https://unavatar.io/twitter/${username}?fallback=false`;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-// YENİ FONKSİYON: Verilen Twitter kullanıcı adından profil resmini çeker
-async function getTwitterPfp(username) {
-  try {
-    const response = await fetch(`https://vxtwitter.com/${username}` );
-    if (!response.ok) return null;
-
-    const html = await response.text();
-    const $ = cheerio.load(html); // HTML'i Cheerio ile yükle
-    const pfpUrl = $('meta[property="og:image"]').attr('content'); // Meta etiketini bul ve 'content' özelliğini al
-    
-    return pfpUrl || null;
-  } catch (error) {
-    console.error('Twitter PFP alınırken hata:', error);
-    return null;
-  }
-}
+ );
 
 export default async function handler(request, response) {
   if (request.method !== 'POST') {
@@ -31,22 +17,21 @@ export default async function handler(request, response) {
   try {
     const { square_id, twitter_username, transaction_id } = request.body;
 
-    // 1. Twitter profil resmini al
-    const pfpUrl = await getTwitterPfp(twitter_username);
-    if (!pfpUrl) {
-      console.warn(`'${twitter_username}' için profil resmi bulunamadı.`);
-      // İsteğe bağlı: Eğer resim bulunamazsa işlemi durdurabilir veya varsayılan bir resimle devam edebiliriz.
-      // Şimdilik null olarak devam edelim.
-    }
+    // 1. Unavatar'dan doğrudan profil resmi URL'sini al.
+    const pfpUrl = getPfpUrl(twitter_username);
 
-    // 2. Veritabanına yeni satırı, resim URL'si ile birlikte ekle
+    // Unavatar, kullanıcı bulunamazsa genellikle bir yönlendirme veya hata döndürür.
+    // Bunu doğrulamak için URL'ye bir HEAD isteği atabiliriz, ama şimdilik basit tutalım.
+    // Eğer kullanıcı adı yanlışsa, kırık bir resim linki kaydedilir, bu da kabul edilebilir bir başlangıç.
+
+    // 2. Veritabanına yeni satırı, resim URL'si ile birlikte ekle.
     const { data, error } = await supabase
       .from('squares')
       .insert([{ 
           square_id, 
           owner_twitter_username: twitter_username, 
           transaction_id,
-          owner_twitter_pfp_url: pfpUrl // Yeni veriyi ekle
+          owner_twitter_pfp_url: pfpUrl 
       }])
       .select()
       .single();
@@ -59,6 +44,7 @@ export default async function handler(request, response) {
       return response.status(500).json({ message: 'Veritabanı hatası.', error: error.message });
     }
 
+    // Başarılı cevaba pfpUrl'i de ekleyelim ki ön yüz anında kullansın.
     return response.status(200).json({ message: 'Kare başarıyla kaydedildi.', data: data });
 
   } catch (e) {
