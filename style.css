@@ -3,7 +3,7 @@ body {
     display: grid;
     grid-template-columns: repeat(200, 30px);
     background-color: #000033;
-    margin: 0;
+    margin: 0; /* Sayfa kenarlarındaki boşluğu kaldır */
     /* Eylem çubuğu için altta boşluk bırak */
     padding-bottom: 80px; 
     width: 6000px;
@@ -18,7 +18,7 @@ body {
     cursor: pointer; /* Üzerine gelince el işareti çıksın */
 }
 
-/* YENİ: Kullanıcının seçtiği karenin stili */
+/* Kullanıcının seçtiği karenin stili */
 .grid-square.selected {
     border: 2px solid #00ff00; /* Parlak yeşil kenarlık */
     box-shadow: 0 0 10px #00ff00; /* Yeşil bir parlama efekti */
@@ -77,7 +77,7 @@ body {
     cursor: pointer;
 }
 
-/* --- Modal Stilleri (Öncekiyle 거의 aynı) --- */
+/* --- Modal Stilleri --- */
 .modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
@@ -101,12 +101,9 @@ body {
 .payment-info p { margin: 5px 0; }
 hr { border: 1px solid #eee; margin: 15px 0; }
 #modal-square-id, #modal-twitter-username { font-weight: bold; }
-/* Satılmış bir karenin stili */
-.grid-square.sold {
-    background-color: #ff0000; /* Kırmızı arka plan */
-    border: 1px solid #ff4d4d;
-    cursor: not-allowed; /* Üzerine gelince "yasak" imleci */
-}
+
+/* --- Satılmış Kare ve Resim Stilleri --- */
+
 /* Karelerin içine eklenen profil resmi stilleri */
 .pfp-image {
     width: 100%;
@@ -115,9 +112,15 @@ hr { border: 1px solid #eee; margin: 15px 0; }
     display: block; /* Resim altındaki olası boşlukları kaldırır */
 }
 
-/* Satılmış karelerin kenarlıklarını kaldıralım ki resimler bitişik dursun */
+/* Satılmış bir kare */
 .grid-square.sold {
-    border: none;
-    padding: 0; /* Kenarlık gidince oluşabilecek boşlukları sıfırla */
+    cursor: not-allowed; /* Tıklamayı engelle */
+    border: none; /* Kenarlığı kaldır */
+    padding: 0;
 }
 
+/* İçinde resim OLMAYAN satılmış kareleri kırmızı yap (Flash efektini önler) */
+.grid-square.sold:not(:has(.pfp-image)) {
+    background-color: #5a0000; /* Kırmızıyı biraz koyulaştıralım */
+    border: 1px solid #ff4d4d;
+}
