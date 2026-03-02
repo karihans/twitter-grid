@@ -1,72 +1,92 @@
 // api/get-price.js
-import { Connection, PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
 
-// --- ÖNEMLİ AYARLAR ---
-
+// --- AYARLAR ---
 // Kendi Pump.fun token'ınızın adresini buraya yapıştırın
 const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
 
-// Pump.fun'ın ana program ve bonding curve kontrat adresleri (bunlar sabittir)
-const PUMP_FUN_PROGRAM = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
-const BONDING_CURVE_SEED = Buffer.from('bonding-curve');
-const METADATA_SEED = Buffer.from('metadata');
+// Bitquery'nin GraphQL uç noktası
+const BITQUERY_ENDPOINT = "https://graphql.bitquery.io/";
 
-// Solana'ya bağlanmak için bir RPC adresi. Helius veya QuickNode'dan ücretsiz alabilirsiniz.
-// Vercel'in varsayılanı bazen yetersiz kalabilir.
-const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
-
-// --- FİYAT ALMA MANTIĞI ---
-
-async function getSolPriceInUsd( ) {
-  try {
-    const response = await fetch('https://price.jup.ag/v4/price?ids=SOL&vsToken=USDC' );
-    const data = await response.json();
-    return data.data.SOL.price;
-  } catch (error) {
-    console.error("SOL/USD fiyatı alınamadı:", error);
-    throw new Error("SOL/USD fiyatı alınamadı.");
+// --- Bitquery GraphQL Sorgusu ---
+// Bu sorgu, token'ın USD cinsinden fiyatını alır.
+const GET_TOKEN_PRICE_QUERY = `
+  query GetTokenPrice($tokenAddress: String! ) {
+    solana(network: solana) {
+      dexTrades(
+        options: {desc: "block.timestamp.time", limit: 1}
+        buyCurrency: {is: $tokenAddress}
+      ) {
+        block {
+          timestamp {
+            time(format: "%Y-%m-%d %H:%M:%S")
+          }
+        }
+        transaction {
+          signature
+        }
+        buyAmount
+        buyCurrency {
+          symbol
+          address
+        }
+        sellAmount
+        sellCurrency {
+          symbol
+          address
+        }
+        price: tradePrice(in: USD)
+      }
+    }
   }
-}
+`;
 
+// --- API Handler ---
 export default async function handler(request, response) {
   try {
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    const tokenMint = new PublicKey(PUMP_TOKEN_ADDRESS);
-
-    // Pump.fun bonding curve hesabının adresini türet
-    const [bondingCurve] = PublicKey.findProgramAddressSync(
-      [BONDING_CURVE_SEED, tokenMint.toBuffer()],
-      PUMP_FUN_PROGRAM
-    );
-
-    // Bonding curve hesabının bilgilerini zincirden çek
-    const accountInfo = await connection.getAccountInfo(bondingCurve);
-    if (!accountInfo) {
-      throw new Error("Token'ın bonding curve hesabı bulunamadı. Adresin doğru olduğundan emin olun.");
+    const apiKey = process.env.BITQUERY_API_KEY;
+    if (!apiKey) {
+      throw new Error("Bitquery API anahtarı sunucu ortamında ayarlanmamış.");
     }
 
-    // Gelen ham veriden rezervleri ayıkla (bu offsetler Pump.fun kontratına özeldir)
-    const virtualSolReserves = Number(accountInfo.data.readBigUInt64LE(8));
-    const virtualTokenReserves = Number(accountInfo.data.readBigUInt64LE(16));
-    
-    if (virtualTokenReserves === 0) {
-      throw new Error("Token rezervi sıfır, fiyat hesaplanamıyor.");
+    console.log("Bitquery API'sine istek gönderiliyor...");
+
+    const res = await fetch(BITQUERY_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-KEY": apiKey,
+      },
+      body: JSON.stringify({
+        query: GET_TOKEN_PRICE_QUERY,
+        variables: {
+          tokenAddress: PUMP_TOKEN_ADDRESS,
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("Bitquery API'sinden başarısız cevap:", res.status, errorText);
+      throw new Error(`Bitquery API'si ${res.status} durum koduyla başarısız oldu.`);
     }
 
-    // 1. Token'ın SOL cinsinden fiyatını hesapla
-    const priceInSol = virtualSolReserves / virtualTokenReserves;
+    const jsonResponse = await res.json();
+    console.log("Bitquery'den gelen cevap:", JSON.stringify(jsonResponse, null, 2));
 
-    // 2. Anlık SOL/USD fiyatını al
-    const solPriceUsd = await getSolPriceInUsd();
+    // Gelen veriden fiyatı ayıkla
+    const trades = jsonResponse.data?.solana?.dexTrades;
+    if (!trades || trades.length === 0) {
+      throw new Error("Token için Bitquery'de işlem bulunamadı. Token adresi doğru mu veya hiç işlem yapıldı mı?");
+    }
 
-    // 3. Token'ın USD cinsinden fiyatını hesapla
-    const priceInUsd = priceInSol * solPriceUsd;
+    const priceInUsd = trades[0].price;
+    const tokenSymbol = trades[0].buyCurrency.symbol || "YOUR_TOKEN";
 
-    // Pump.fun token'larının genellikle sembolü olmaz, metadata'dan almak gerekir.
-    // Şimdilik basit tutalım ve sabit bir isim verelim.
-    const tokenSymbol = "BARRON"; // Kendi token sembolünüzü buraya yazabilirsiniz.
+    if (typeof priceInUsd !== 'number') {
+      throw new Error("Alınan fiyat verisi geçerli bir sayı değil.");
+    }
 
+    // Başarılı cevabı gönder
     return response.status(200).json({
       token: tokenSymbol,
       price_in_usd: priceInUsd,
