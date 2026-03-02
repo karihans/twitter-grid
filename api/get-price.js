@@ -2,7 +2,7 @@
 
 // --- AYARLAR ---
 // Kendi Pump.fun token'ınızın adresini buraya yapıştırın
-const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
+const PUMP_TOKEN_ADDRESS = "NV2RYH954cTJ3ckFUpvfqaQXU4ARqqDH3562nFSpump";
 
 // Bitquery'nin GraphQL uç noktası
 const BITQUERY_ENDPOINT = "https://graphql.bitquery.io/";
