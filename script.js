@@ -6,6 +6,15 @@ const closeModalButton = document.getElementById('close-modal');
 const submitPurchaseButton = document.getElementById('submit-purchase');
 const twitterUsernameInput = document.getElementById('twitter-username');
 
+// --- SUPABASE BAĞLANTISI ---
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Supabase istemcisini oluşturuyoruz. Veritabanı ile tüm iletişim bu 'supabase' objesi üzerinden yapılacak.
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+console.log('Supabase İstemcisi Başlatıldı:', supabase);
+
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
 let isFetchingPrice = false; // Fiyat alınırken tekrar butona basılmasını engellemek için
@@ -107,23 +116,66 @@ function closeModal() {
     modal.classList.add('hidden');
 }
 
-function handleSubmit() {
+// Son onayı ve isteği gönderen YENİ fonksiyon
+async function handleSubmit() {
     const twitterUsername = document.getElementById('modal-twitter-username').textContent;
     const transactionId = document.getElementById('transaction-id').value;
 
-    console.log(`SATIN ALMA İSTEĞİ ONAYLANDI:
-        Seçilen Kare: ${selectedSquare.id},
-        Twitter: ${twitterUsername},
-        TX ID: ${transactionId}`);
+    if (!transactionId) {
+        alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
+        return;
+    }
 
-    alert('İsteğiniz başarıyla alındı! Onay sonrası kareniz güncellenecektir.');
-    closeModal();
-    
-    if (selectedSquare) {
-        selectedSquare.classList.remove('selected');
-        selectedSquare = null;
+    // Butonu devre dışı bırak ve durumu güncelle
+    submitPurchaseButton.disabled = true;
+    submitPurchaseButton.textContent = 'Kaydediliyor...';
+
+    try {
+        // Supabase'e veri ekleme işlemi
+        const { data, error } = await supabase
+            .from('squares') // Hangi tabloya ekleyeceğimizi belirtiyoruz
+            .insert([ // Eklenecek veriyi bir obje olarak gönderiyoruz
+                { 
+                    square_id: selectedSquare.id, 
+                    owner_twitter_username: twitterUsername,
+                    transaction_id: transactionId 
+                }
+            ]);
+
+        // Eğer Supabase bir hata döndürürse (örn: aynı square_id tekrar eklenmeye çalışılırsa)
+        if (error) {
+            // Hatanın daha anlaşılır olması için
+            console.error('Supabase Hatası:', error);
+            if (error.code === '23505') { // 'unique_violation' hata kodu
+                 alert('Hata: Bu kare daha önce başka birisi tarafından satın alınmış!');
+            } else {
+                 alert(`Veritabanına kayıt sırasında bir hata oluştu: ${error.message}`);
+            }
+            return; // Hata durumunda fonksiyondan çık
+        }
+
+        console.log('Supabase\'e başarıyla eklendi:', data);
+        alert('İsteğiniz başarıyla veritabanına kaydedildi! Onay sonrası kareniz güncellenecektir.');
+        
+        // Başarılı işlem sonrası
+        closeModal();
+        if (selectedSquare) {
+            // Satılan kareyi görsel olarak işaretleyelim (örneğin kırmızı yaparak)
+            selectedSquare.classList.add('sold'); 
+            selectedSquare.classList.remove('selected');
+            selectedSquare = null;
+        }
+
+    } catch (e) {
+        console.error('Beklenmedik Hata:', e);
+        alert(`Bir hata oluştu: ${e.message}`);
+    } finally {
+        // Butonu tekrar aktif hale getir
+        submitPurchaseButton.disabled = false;
+        submitPurchaseButton.textContent = 'Onaylıyorum ve İsteği Gönder';
     }
 }
+
 
 // --- OLAY DİNLEYİCİLERİ ---
 createGrid();

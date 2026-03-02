@@ -101,3 +101,10 @@ body {
 .payment-info p { margin: 5px 0; }
 hr { border: 1px solid #eee; margin: 15px 0; }
 #modal-square-id, #modal-twitter-username { font-weight: bold; }
+/* Satılmış bir karenin stili */
+.grid-square.sold {
+    background-color: #ff0000; /* Kırmızı arka plan */
+    border: 1px solid #ff4d4d;
+    cursor: not-allowed; /* Üzerine gelince "yasak" imleci */
+}
+
