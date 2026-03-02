@@ -9,7 +9,6 @@ const twitterUsernameInput = document.getElementById('twitter-username');
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
 let isFetchingPrice = false;
-let isSubmitting = false;
 
 // --- AYARLAR ---
 const gridSize = 200;
@@ -142,24 +141,29 @@ function closeModal() {
     modal.classList.add('hidden');
 }
 
+// ÇİFT TIKLAMA SORUNU İÇİN NİHAİ ÇÖZÜM
 async function handleSubmit() {
-    // YENİ: Eğer zaten bir gönderme işlemi varsa, ikinciyi çalıştırma!
-    if (isSubmitting) {
-        console.log('Zaten bir gönderme işlemi devam ediyor, ikinci istek engellendi.');
-        return; 
-    }
-    isSubmitting = true; // Bayrağı kaldır, işlem başladı.
+    // 1. ADIM: Butondan tıklama olayını hemen sök!
+    // Bu, ikinci bir tıklamanın bu fonksiyonu tekrar çalıştırmasını engeller.
+    submitPurchaseButton.removeEventListener('click', handleSubmit);
+    console.log('handleSubmit başlatıldı, olay dinleyicisi söküldü.');
 
-    // ... fonksiyonun geri kalanı ...
-    const twitterUsername = document.getElementById('modal-twitter-username').textContent;
-    const transactionId = document.getElementById('transaction-id').value;
-    if (!transactionId) {
-        alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
-        return;
-    }
+    // Butonun durumunu manuel olarak ayarla
     submitPurchaseButton.disabled = true;
     submitPurchaseButton.textContent = 'Kaydediliyor...';
+
     try {
+        const twitterUsername = document.getElementById('modal-twitter-username').textContent;
+        const transactionId = document.getElementById('transaction-id').value;
+
+        if (!transactionId) {
+            alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.');
+            // Hata durumunda fonksiyonu bitirmeden önce olay dinleyicisini tekrar takmalıyız.
+            // Bu yüzden bu satırı 'finally' bloğuna taşıyoruz.
+            // submitPurchaseButton.addEventListener('click', handleSubmit);
+            return; // return'den önce finally çalışır.
+        }
+
         const response = await fetch('/api/save-square', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -169,41 +173,43 @@ async function handleSubmit() {
                 transaction_id: transactionId
             }),
         });
+
         const result = await response.json();
-        if (!response.ok) { throw new Error(result.message || 'Bilinmeyen bir hata oluştu.'); }
-        alert('İsteğiniz başarıyla veritabanına kaydedildi!');
-        closeModal();
-        // handleSubmit fonksiyonunun içindeki 'try' bloğunun sonu...
+        if (!response.ok) {
+            throw new Error(result.message || 'Bilinmeyen bir hata oluştu.');
+        }
 
         alert('İsteğiniz başarıyla veritabanına kaydedildi!');
+        
         closeModal();
-
-        // Bu kısmı güncelliyoruz
         if (selectedSquare) {
-            // API'den dönen verinin içinde pfp url'i olmalı
             const pfpUrl = result.data.owner_twitter_pfp_url;
-
             if (pfpUrl) {
-                selectedSquare.innerHTML = ''; // İçini temizle
+                selectedSquare.innerHTML = '';
                 const pfpImage = document.createElement('img');
                 pfpImage.src = pfpUrl;
                 pfpImage.classList.add('pfp-image');
                 selectedSquare.appendChild(pfpImage);
             }
-
             selectedSquare.classList.add('sold');
             selectedSquare.classList.remove('selected');
             selectedSquare = null;
         }
-// ... fonksiyonun geri kalanı aynı
 
     } catch (error) {
         console.error('İstek gönderilirken hata:', error);
         alert(`Hata: ${error.message}`);
     } finally {
+        // 2. ADIM: İşlem bittiğinde (başarılı veya hatalı), butonu eski haline getir
+        // ve tıklama olayını TEKRAR TAK.
         submitPurchaseButton.disabled = false;
         submitPurchaseButton.textContent = 'Onaylıyorum ve İsteği Gönder';
-        isSubmitting = false; // YENİ: Bayrağı indir, işlem bitti.
+        
+        // Kısa bir gecikme sonrası dinleyiciyi eklemek daha güvenli olabilir.
+        setTimeout(() => {
+            submitPurchaseButton.addEventListener('click', handleSubmit);
+            console.log('İşlem bitti, olay dinleyicisi tekrar takıldı.');
+        }, 100); // 100 milisaniye bekle
     }
 }
 
