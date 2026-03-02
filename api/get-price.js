@@ -1,53 +1,63 @@
-// Bu satır, fonksiyonun Edge Runtime'da çalışmasını sağlar. Bu kritik.
+// Fonksiyonun Edge Runtime'da çalışmasını sağlar.
 export const config = {
   runtime: 'edge',
 };
 
-// Edge fonksiyonları sadece 'request' parametresini alır. 'response' yoktur.
+// Edge fonksiyonları sadece 'request' parametresini alır.
 export default async function handler(request) {
   try {
-    const apiUrl = 'https://price.jup.ag/v4/price?ids=SOL&vsToken=USDC';
+    // YENİ API ADRESİ: CoinGecko
+    // Bize Solana'nın anlık USD fiyatını verecek.
+    const apiUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
 
-    // fetch işlemi aynı kalır.
-    const apiResponse = await fetch(apiUrl );
+    const apiResponse = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/json',
+      }
+    } );
 
     if (!apiResponse.ok) {
-      // Hata mesajını daha bilgilendirici yapalım.
       const errorText = await apiResponse.text();
-      throw new Error(`Jupiter API Error (${apiResponse.status}): ${errorText}`);
+      throw new Error(`CoinGecko API Error (${apiResponse.status}): ${errorText}`);
     }
 
     const data = await apiResponse.json();
-    const solPrice = data.data.SOL.price;
+    
+    // CoinGecko'dan gelen veri yapısı farklıdır: { "solana": { "usd": 135.12 } }
+    const solPrice = data.solana.usd;
 
-    // Başarılı cevap, 'new Response' ile oluşturulur. Bu doğru yöntem.
+    if (solPrice === undefined) {
+      throw new Error('CoinGecko cevabında fiyat bilgisi bulunamadı.');
+    }
+
+    // Başarılı cevap
     return new Response(
       JSON.stringify({
+        source: 'CoinGecko', // Kaynağı belirtelim
         token: 'SOL',
         price_in_usd: solPrice,
-        message: `1 SOL anlık olarak ${solPrice} USDC değerindedir.`
+        message: `1 SOL anlık olarak ${solPrice} USD değerindedir.`
       }),
       {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 's-maxage=60, stale-while-revalidate', // Fiyatı 60 saniye cache'le
+          'Cache-Control': 's-maxage=60, stale-while-revalidate',
         },
       }
     );
 
   } catch (error) {
-    // Hataları yakalayıp loglamak çok önemlidir.
     console.error('API Hatası:', error);
 
-    // Hata durumunda da 'new Response' ile cevap oluşturulur.
+    // Hata cevabı
     return new Response(
       JSON.stringify({
         message: 'Token fiyatı alınırken bir hata oluştu.',
         error: error.message,
       }),
       {
-        status: 500, // Sunucu hatası olduğunu belirtir.
+        status: 500,
         headers: {
           'Content-Type': 'application/json',
         },
