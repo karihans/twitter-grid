@@ -3,50 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Grid Project</title>
+    <title>The Wall</title>
+    <!-- Google Fonts'tan modern bir yazı tipi ekliyoruz -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <!-- Izgara JavaScript tarafından buraya eklenecek -->
 
-    <!-- SAYFANIN ALTINDAKİ SABİT EYLEM ÇUBUĞU -->
+    <!-- YENİ ve MODERN EYLEM ÇUBUĞU -->
     <div id="action-bar">
         <div class="action-bar-content">
             
-            <!-- Sayaç Elementi -->
             <div id="sold-counter" class="counter-styles">
-                Satılan: <span id="sold-count">...</span> / 40000
+                <span class="counter-label">SATILAN</span>
+                <span id="sold-count">...</span> / 40000
             </div>
 
             <div class="input-group">
-                <label for="twitter-username">Twitter Kullanıcı Adı:</label>
-                <input type="text" id="twitter-username" placeholder="@ olmadan girin...">
+                <input type="text" id="twitter-username" placeholder="Twitter Kullanıcı Adı">
             </div>
-            <button id="purchase-button">Satın Al</button>
+            
+            <button id="purchase-button" class="glow-on-hover">
+                <span class="button-text">KARENİ AL</span>
+            </button>
         </div>
     </div>
 
-    <!-- ONAY MODAL PENCERESİ (Başlangıçta gizli) -->
+    <!-- ONAY MODAL PENCERESİ (Başlangıçta gizli ) -->
     <div id="confirmation-modal" class="modal-overlay hidden">
         <div class="modal-content">
-            <h2 id="modal-title">Satın Alma Onayı</h2>
-            <p>Lütfen aşağıdaki bilgileri kullanarak ödemeyi yapın ve işlem kimliğini girin.</p>
+            <h2 id="modal-title">Satın Almayı Onayla</h2>
+            <p>Seçtiğin kareyi duvarına eklemek üzeresin. Ödemeyi tamamla ve işlemi onayla.</p>
             
             <div class="payment-info">
-                <p><strong>Seçilen Kare:</strong> <span id="modal-square-id"></span></p>
-                <p><strong>Twitter Hesabı:</strong> <span id="modal-twitter-username"></span></p>
+                <p><strong>Kare ID:</strong> <span id="modal-square-id"></span></p>
+                <p><strong>Twitter:</strong> <span id="modal-twitter-username"></span></p>
                 <hr>
-                <p><strong>Ödeme Miktarı:</strong> <span id="payment-amount">Hesaplanıyor...</span></p>
-                <p><strong>Cüzdan Adresi:</strong> [SENİN_SOLANA_CUZDAN_ADRESİN]</p>
+                <p><strong>Ödenecek Tutar:</strong> <span id="payment-amount">...</span></p>
+                <p><strong>Cüzdan Adresi:</strong> <span>[SENİN_SOLANA_CUZDAN_ADRESİN]</span></p>
             </div>
 
             <div class="form-group">
-                <label for="transaction-id">İşlem Kimliği (TX ID):</label>
-                <input type="text" id="transaction-id" placeholder="Ödeme sonrası aldığınız işlem kimliği">
+                <label for="transaction-id">İşlem Kimliği (TX ID)</label>
+                <input type="text" id="transaction-id" placeholder="Ödeme sonrası aldığın işlem kimliği">
             </div>
 
-            <button id="submit-purchase">Onaylıyorum ve İsteği Gönder</button>
-            <button id="close-modal">İptal</button>
+            <div class="modal-buttons">
+                <button id="submit-purchase" class="glow-on-hover">DUVARA EKLE</button>
+                <button id="close-modal">İPTAL</button>
+            </div>
         </div>
     </div>
 
