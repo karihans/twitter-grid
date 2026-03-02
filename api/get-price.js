@@ -2,88 +2,56 @@
 
 // --- AYARLAR ---
 // Kendi Pump.fun token'ınızın adresini buraya yapıştırın
-const PUMP_TOKEN_ADDRESS = "NV2RYH954cTJ3ckFUpvfqaQXU4ARqqDH3562nFSpump";
-
-// Bitquery'nin GraphQL uç noktası
-const BITQUERY_ENDPOINT = "https://graphql.bitquery.io/";
-
-// --- Bitquery GraphQL Sorgusu ---
-// Bu sorgu, token'ın USD cinsinden fiyatını alır.
-const GET_TOKEN_PRICE_QUERY = `
-  query GetTokenPrice($tokenAddress: String! ) {
-    solana(network: solana) {
-      dexTrades(
-        options: {desc: "block.timestamp.time", limit: 1}
-        buyCurrency: {is: $tokenAddress}
-      ) {
-        block {
-          timestamp {
-            time(format: "%Y-%m-%d %H:%M:%S")
-          }
-        }
-        transaction {
-          signature
-        }
-        buyAmount
-        buyCurrency {
-          symbol
-          address
-        }
-        sellAmount
-        sellCurrency {
-          symbol
-          address
-        }
-        price: tradePrice(in: USD)
-      }
-    }
-  }
-`;
+const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
 
 // --- API Handler ---
 export default async function handler(request, response) {
   try {
-    const apiKey = process.env.BITQUERY_API_KEY;
+    const apiKey = process.env.MORALIS_API_KEY;
     if (!apiKey) {
-      throw new Error("Bitquery API anahtarı sunucu ortamında ayarlanmamış.");
+      throw new Error("Moralis API anahtarı sunucu ortamında ayarlanmamış.");
     }
 
-    console.log("Bitquery API'sine istek gönderiliyor...");
+    // Moralis'in Pump.fun token bilgisi için API uç noktası
+    const moralisApiUrl = `https://solana-gateway.moralis.io/pump/v1/token/${PUMP_TOKEN_ADDRESS}`;
 
-    const res = await fetch(BITQUERY_ENDPOINT, {
-      method: "POST",
+    console.log("Moralis API'sine istek gönderiliyor:", moralisApiUrl );
+
+    const res = await fetch(moralisApiUrl, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "X-API-KEY": apiKey,
+        "X-API-Key": apiKey,
       },
-      body: JSON.stringify({
-        query: GET_TOKEN_PRICE_QUERY,
-        variables: {
-          tokenAddress: PUMP_TOKEN_ADDRESS,
-        },
-      }),
     });
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("Bitquery API'sinden başarısız cevap:", res.status, errorText);
-      throw new Error(`Bitquery API'si ${res.status} durum koduyla başarısız oldu.`);
+      console.error("Moralis API'sinden başarısız cevap:", res.status, errorText);
+      throw new Error(`Moralis API'si ${res.status} durum koduyla başarısız oldu.`);
     }
 
-    const jsonResponse = await res.json();
-    console.log("Bitquery'den gelen cevap:", JSON.stringify(jsonResponse, null, 2));
+    const tokenData = await res.json();
+    console.log("Moralis'ten gelen cevap:", JSON.stringify(tokenData, null, 2));
 
-    // Gelen veriden fiyatı ayıkla
-    const trades = jsonResponse.data?.solana?.dexTrades;
-    if (!trades || trades.length === 0) {
-      throw new Error("Token için Bitquery'de işlem bulunamadı. Token adresi doğru mu veya hiç işlem yapıldı mı?");
+    // Gelen veriden fiyatı ve sembolü ayıkla
+    // Moralis fiyatı doğrudan USD cinsinden 'usd_market_cap' / 'total_supply' olarak hesaplar
+    // veya doğrudan bir fiyat alanı sunabilir. Dönen veriye göre ayarlama yapalım.
+    // Dökümana göre, 'market_cap_usd' ve 'total_supply' alanları var.
+    
+    const marketCapUsd = parseFloat(tokenData.market_cap_usd);
+    const totalSupply = parseFloat(tokenData.total_supply);
+
+    if (!marketCapUsd || !totalSupply || totalSupply === 0) {
+      throw new Error("API cevabında fiyat hesaplamak için gerekli veri (market_cap_usd, total_supply) bulunamadı.");
     }
 
-    const priceInUsd = trades[0].price;
-    const tokenSymbol = trades[0].buyCurrency.symbol || "YOUR_TOKEN";
+    // Fiyatı hesapla: Market Cap / Total Supply
+    const priceInUsd = marketCapUsd / totalSupply;
+    const tokenSymbol = tokenData.symbol || "YOUR_TOKEN";
 
-    if (typeof priceInUsd !== 'number') {
-      throw new Error("Alınan fiyat verisi geçerli bir sayı değil.");
+    if (typeof priceInUsd !== 'number' || isNaN(priceInUsd)) {
+      throw new Error("Hesaplanan fiyat verisi geçerli bir sayı değil.");
     }
 
     // Başarılı cevabı gönder
