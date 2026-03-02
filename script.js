@@ -9,6 +9,7 @@ const twitterUsernameInput = document.getElementById('twitter-username');
 // --- DURUM (STATE) DEĞİŞKENLERİ ---
 let selectedSquare = null;
 let isFetchingPrice = false;
+let isSubmitting = false;
 
 // --- AYARLAR ---
 const gridSize = 200;
@@ -142,6 +143,14 @@ function closeModal() {
 }
 
 async function handleSubmit() {
+    // YENİ: Eğer zaten bir gönderme işlemi varsa, ikinciyi çalıştırma!
+    if (isSubmitting) {
+        console.log('Zaten bir gönderme işlemi devam ediyor, ikinci istek engellendi.');
+        return; 
+    }
+    isSubmitting = true; // Bayrağı kaldır, işlem başladı.
+
+    // ... fonksiyonun geri kalanı ...
     const twitterUsername = document.getElementById('modal-twitter-username').textContent;
     const transactionId = document.getElementById('transaction-id').value;
     if (!transactionId) {
@@ -194,6 +203,7 @@ async function handleSubmit() {
     } finally {
         submitPurchaseButton.disabled = false;
         submitPurchaseButton.textContent = 'Onaylıyorum ve İsteği Gönder';
+        isSubmitting = false; // YENİ: Bayrağı indir, işlem bitti.
     }
 }
 
