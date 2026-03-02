@@ -1,18 +1,18 @@
 /* Sayfanın temel ayarları */
 body {
     display: grid;
-    grid-template-columns: repeat(200, 30px);
+    /* YENİ BOYUT: 200 sütun x 50px = 10000px genişlik */
+    grid-template-columns: repeat(200, 50px); 
     background-color: #000033;
     margin: 0; /* Sayfa kenarlarındaki boşluğu kaldır */
-    /* Eylem çubuğu için altta boşluk bırak */
     padding-bottom: 80px; 
-    width: 6000px;
+    width: 10000px; /* YENİ GENİŞLİK */
 }
 
 /* Tek bir karenin stili */
 .grid-square {
-    width: 30px;
-    height: 30px;
+    width: 50px;  /* YENİ BOYUT */
+    height: 50px; /* YENİ BOYUT */
     border: 1px solid #1a1a4a; 
     box-sizing: border-box;
     cursor: pointer; /* Üzerine gelince el işareti çıksın */
