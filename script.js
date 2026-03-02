@@ -1,5 +1,4 @@
 // --- ELEMENTLER ---
-// YENİ: Izgaranın ekleneceği doğru konteyneri seçiyoruz
 const gridContainer = document.getElementById('grid-container'); 
 const purchaseButton = document.getElementById('purchase-button');
 const modal = document.getElementById('confirmation-modal');
@@ -67,7 +66,6 @@ async function loadAndMarkSoldSquares() {
 }
 
 function createGrid() {
-    // gridContainer artık doğru elementi referans aldığı için bu fonksiyon değişmeden çalışır.
     for (let i = 0; i < totalSquares; i++) {
         const square = document.createElement('div');
         square.classList.add('grid-square');
@@ -101,7 +99,7 @@ async function handlePurchaseClick() {
     if (isFetchingPrice) return;
 
     isFetchingPrice = true;
-    purchaseButton.textContent = 'Fiyat Hesaplanıyor...';
+    purchaseButton.querySelector('.button-text').textContent = 'HESAPLANIYOR...';
     purchaseButton.disabled = true;
 
     try {
@@ -116,11 +114,12 @@ async function handlePurchaseClick() {
         alert(`Bir hata oluştu: ${error.message}`);
     } finally {
         isFetchingPrice = false;
-        purchaseButton.textContent = 'KARENİ AL';
+        purchaseButton.querySelector('.button-text').textContent = 'KARENİ AL';
         purchaseButton.disabled = false;
     }
 }
 
+// YENİ: Modal açma/kapatma fonksiyonları
 function openConfirmationModal(username, amount, tokenSymbol) {
     document.getElementById('modal-square-id').textContent = selectedSquare.id;
     document.getElementById('modal-twitter-username').textContent = `@${username}`;
@@ -138,10 +137,10 @@ function closeModal() {
 async function handleSubmit() {
     submitPurchaseButton.removeEventListener('click', handleSubmit);
     submitPurchaseButton.disabled = true;
-    submitPurchaseButton.textContent = 'Kaydediliyor...';
+    submitPurchaseButton.textContent = 'DUVARA EKLENİYOR...';
 
     try {
-        const twitterUsername = document.getElementById('modal-twitter-username').textContent.substring(1); // @ işaretini kaldır
+        const twitterUsername = document.getElementById('modal-twitter-username').textContent.substring(1);
         const transactionId = document.getElementById('transaction-id').value;
 
         if (!transactionId) { alert('Lütfen ödemeyi yaptıktan sonra işlem kimliğini girin.'); return; }
@@ -210,8 +209,6 @@ function initializeApp() {
     createGrid();
     loadAndMarkSoldSquares();
 
-    // Olay dinleyicisi artık gridContainer yerine #grid-wrapper'a eklenebilir
-    // ama gridContainer'da kalması daha spesifik ve doğrudur.
     gridContainer.addEventListener('click', handleSquareClick);
     purchaseButton.addEventListener('click', handlePurchaseClick);
     closeModalButton.addEventListener('click', closeModal);

@@ -12,15 +12,16 @@ body {
     background-color: var(--background-dark);
     margin: 0;
     font-family: 'Space Grotesk', sans-serif;
-    /* Body'den ızgara stillerini kaldırdık */
+    /* YENİ: Sayfanın kendisinin kaydırma çubuğu üretmesini engelle */
+    overflow: hidden; 
 }
 
 /* YENİ: Izgara sarmalayıcısı */
 #grid-wrapper {
     width: 100%;
     height: 100vh; /* Ekran yüksekliği kadar */
-    overflow: auto; /* Hem yatay hem dikey kaydırma sağlar */
-    padding-bottom: 100px; /* Eylem çubuğu için boşluk */
+    overflow: auto; /* Sadece bu elementin kaydırma çubukları olacak */
+    padding-bottom: 120px; /* Eylem çubuğu için boşluk */
     box-sizing: border-box;
 }
 
@@ -198,6 +199,15 @@ body {
 .modal-overlay {
     background-color: rgba(5, 8, 22, 0.8);
     backdrop-filter: blur(5px);
+    /* YENİ: Modalın başlangıçta gizli olmasını sağlar */
+    display: none; 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    justify-content: center; align-items: center;
+    z-index: 1000;
+}
+/* YENİ: Modal görünür olduğunda flex olarak göster */
+.modal-overlay:not(.hidden) {
+    display: flex;
 }
 .modal-content {
     background-color: #0a0f21;
@@ -205,9 +215,13 @@ body {
     border-radius: 16px;
     border: 1px solid var(--border-dark);
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    text-align: left;
 }
-.modal-content h2 { color: #fff; }
-.modal-content hr { border-color: var(--border-dark); }
+.modal-content h2 { color: #fff; margin-top: 0; }
+.modal-content hr { border-color: var(--border-dark); margin: 20px 0; }
 .modal-content input {
     background-color: var(--button-bg);
     border: 1px solid var(--border-dark);
@@ -215,8 +229,10 @@ body {
     padding: 12px;
     border-radius: 8px;
     font-family: 'Space Grotesk', sans-serif;
+    width: 100%;
+    box-sizing: border-box;
 }
-.modal-buttons { margin-top: 20px; }
+.modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
 #close-modal {
     background-color: transparent;
     color: var(--text-light);
@@ -226,4 +242,8 @@ body {
 #close-modal:hover {
     background-color: var(--button-bg);
     border-color: var(--text-light);
+}
+/* YENİ: .hidden class'ının tanımı */
+.hidden {
+    display: none !important;
 }
