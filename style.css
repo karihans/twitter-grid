@@ -124,3 +124,14 @@ hr { border: 1px solid #eee; margin: 15px 0; }
     background-color: #5a0000; /* Kırmızıyı biraz koyulaştıralım */
     border: 1px solid #ff4d4d;
 }
+/* --- Sayaç Stilleri --- */
+.counter-styles {
+    color: #fff;
+    font-family: sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#sold-count {
+    color: #00ff00; /* Sayaç sayısını yeşil yapalım */
+}
