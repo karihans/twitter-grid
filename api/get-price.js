@@ -1,67 +1,82 @@
-// Fonksiyonun Edge Runtime'da çalışmasını sağlar.
-export const config = {
-  runtime: 'edge',
-};
+// api/get-price.js
+import { Connection, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 
-// Edge fonksiyonları sadece 'request' parametresini alır.
-export default async function handler(request) {
+// --- ÖNEMLİ AYARLAR ---
+
+// Kendi Pump.fun token'ınızın adresini buraya yapıştırın
+const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
+
+// Pump.fun'ın ana program ve bonding curve kontrat adresleri (bunlar sabittir)
+const PUMP_FUN_PROGRAM = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+const BONDING_CURVE_SEED = Buffer.from('bonding-curve');
+const METADATA_SEED = Buffer.from('metadata');
+
+// Solana'ya bağlanmak için bir RPC adresi. Helius veya QuickNode'dan ücretsiz alabilirsiniz.
+// Vercel'in varsayılanı bazen yetersiz kalabilir.
+const SOLANA_RPC_URL = "https://api.mainnet-beta.solana.com";
+
+// --- FİYAT ALMA MANTIĞI ---
+
+async function getSolPriceInUsd( ) {
   try {
-    // YENİ API ADRESİ: CoinGecko
-    // Bize Solana'nın anlık USD fiyatını verecek.
-    const apiUrl = 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+    const response = await fetch('https://price.jup.ag/v4/price?ids=SOL&vsToken=USDC' );
+    const data = await response.json();
+    return data.data.SOL.price;
+  } catch (error) {
+    console.error("SOL/USD fiyatı alınamadı:", error);
+    throw new Error("SOL/USD fiyatı alınamadı.");
+  }
+}
 
-    const apiResponse = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/json',
-      }
-    } );
+export default async function handler(request, response) {
+  try {
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const tokenMint = new PublicKey(PUMP_TOKEN_ADDRESS);
 
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      throw new Error(`CoinGecko API Error (${apiResponse.status}): ${errorText}`);
-    }
-
-    const data = await apiResponse.json();
-    
-    // CoinGecko'dan gelen veri yapısı farklıdır: { "solana": { "usd": 135.12 } }
-    const solPrice = data.solana.usd;
-
-    if (solPrice === undefined) {
-      throw new Error('CoinGecko cevabında fiyat bilgisi bulunamadı.');
-    }
-
-    // Başarılı cevap
-    return new Response(
-      JSON.stringify({
-        source: 'CoinGecko', // Kaynağı belirtelim
-        token: 'SOL',
-        price_in_usd: solPrice,
-        message: `1 SOL anlık olarak ${solPrice} USD değerindedir.`
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 's-maxage=60, stale-while-revalidate',
-        },
-      }
+    // Pump.fun bonding curve hesabının adresini türet
+    const [bondingCurve] = PublicKey.findProgramAddressSync(
+      [BONDING_CURVE_SEED, tokenMint.toBuffer()],
+      PUMP_FUN_PROGRAM
     );
+
+    // Bonding curve hesabının bilgilerini zincirden çek
+    const accountInfo = await connection.getAccountInfo(bondingCurve);
+    if (!accountInfo) {
+      throw new Error("Token'ın bonding curve hesabı bulunamadı. Adresin doğru olduğundan emin olun.");
+    }
+
+    // Gelen ham veriden rezervleri ayıkla (bu offsetler Pump.fun kontratına özeldir)
+    const virtualSolReserves = Number(accountInfo.data.readBigUInt64LE(8));
+    const virtualTokenReserves = Number(accountInfo.data.readBigUInt64LE(16));
+    
+    if (virtualTokenReserves === 0) {
+      throw new Error("Token rezervi sıfır, fiyat hesaplanamıyor.");
+    }
+
+    // 1. Token'ın SOL cinsinden fiyatını hesapla
+    const priceInSol = virtualSolReserves / virtualTokenReserves;
+
+    // 2. Anlık SOL/USD fiyatını al
+    const solPriceUsd = await getSolPriceInUsd();
+
+    // 3. Token'ın USD cinsinden fiyatını hesapla
+    const priceInUsd = priceInSol * solPriceUsd;
+
+    // Pump.fun token'larının genellikle sembolü olmaz, metadata'dan almak gerekir.
+    // Şimdilik basit tutalım ve sabit bir isim verelim.
+    const tokenSymbol = "BARRON"; // Kendi token sembolünüzü buraya yazabilirsiniz.
+
+    return response.status(200).json({
+      token: tokenSymbol,
+      price_in_usd: priceInUsd,
+    });
 
   } catch (error) {
-    console.error('API Hatası:', error);
-
-    // Hata cevabı
-    return new Response(
-      JSON.stringify({
-        message: 'Token fiyatı alınırken bir hata oluştu.',
-        error: error.message,
-      }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    console.error("get-price API'sinde hata:", error);
+    return response.status(500).json({
+      message: "Token fiyatı alınırken sunucu tarafında bir hata oluştu.",
+      error: error.message,
+    });
   }
 }
