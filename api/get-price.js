@@ -1,8 +1,8 @@
 // api/get-price.js
 
 // --- AYARLAR ---
-// SİZİN DOĞRU VE AKTİF TOKEN ADRESİNİZ (BARRON)
-const TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
+// BONK TOKEN'ININ RESMİ ADRESİ
+const TOKEN_ADDRESS = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
 
 // Jupiter'in herkese açık ve anahtarsız fiyat API'si uç noktası
 const JUPITER_PRICE_API = `https://price.jup.ag/v4/price?ids=${TOKEN_ADDRESS}`;
@@ -36,7 +36,7 @@ export default async function handler(request, response ) {
     }
 
     // Jupiter genellikle sembolü de döndürür, onu kullanalım
-    const tokenSymbol = tokenData.mintSymbol || "BARRON";
+    const tokenSymbol = tokenData.mintSymbol || "BONK";
 
     // Başarılı cevabı gönder
     return response.status(200).json({
