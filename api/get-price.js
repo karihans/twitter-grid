@@ -2,7 +2,7 @@
 
 // --- AYARLAR ---
 // BONK TOKEN'ININ RESMİ ADRESİ
-const TOKEN_ADDRESS = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
+const TOKEN_ADDRESS = "GEAVdBXp7mdwgFhzZzcLCDTzsDwTgRdtnXPArj3gpump";
 
 // --- ANA API HANDLER ---
 export default async function handler(request, response ) {
