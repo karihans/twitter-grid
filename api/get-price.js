@@ -1,7 +1,6 @@
 import { Connection, PublicKey } from '@solana/web3.js';
 import { LIQUIDITY_STATE_LAYOUT_V4, MARKET_STATE_LAYOUT_V3 } from '@raydium-io/raydium-sdk'; // Raydium SDK'sını kullanacağız çünkü Pump Swap havuzları benzer bir yapı kullanır.
 
-// --- AYARLAR ---
 const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
 const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 
