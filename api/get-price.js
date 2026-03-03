@@ -1,67 +1,85 @@
 // api/get-price.js
+import { Connection, PublicKey } from '@solana/web3.js';
 
 // --- AYARLAR ---
-// Kendi Pump.fun token'ınızın adresini buraya yapıştırın
 const PUMP_TOKEN_ADDRESS = "ctQPRPpLY52CeEfmJqUEhYQ6SmMVHitkU3KKEDUpump";
 
-// --- API Handler ---
+// Pump.fun'ın ana program ve bonding curve kontrat adresleri (sabit)
+const PUMP_FUN_PROGRAM = new PublicKey('6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
+const BONDING_CURVE_SEED = Buffer.from('bonding-curve');
+
+// Güvenilir bir RPC adresi. Helius'tan ücretsiz bir hesap açıp almanızı şiddetle tavsiye ederim.
+// Ücretsiz Helius RPC'si, genel amaçlı olanlardan çok daha performanslıdır.
+const SOLANA_RPC_URL = process.env.HELIUS_RPC_URL || "https://api.mainnet-beta.solana.com";
+
+// --- YARDIMCI FONKSİYONLAR ---
+async function getSolPriceInUsd( ) {
+  try {
+    // Jupiter, SOL fiyatı için hala en güvenilir kaynaklardan biridir.
+    const response = await fetch('https://price.jup.ag/v4/price?ids=SOL&vsToken=USDC' );
+    if (!response.ok) throw new Error('Jupiter API for SOL price failed');
+    const data = await response.json();
+    return data.data.SOL.price;
+  } catch (error) {
+    console.error("SOL/USD fiyatı alınamadı:", error);
+    throw new Error("SOL/USD fiyatı alınamadı.");
+  }
+}
+
+// --- ANA API HANDLER ---
 export default async function handler(request, response) {
   try {
-    const apiKey = process.env.MORALIS_API_KEY;
-    if (!apiKey) {
-      throw new Error("Moralis API anahtarı sunucu ortamında ayarlanmamış.");
+    console.log("RPC İsteği Başlatıldı. RPC URL:", SOLANA_RPC_URL);
+    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    const tokenMint = new PublicKey(PUMP_TOKEN_ADDRESS);
+
+    // Bonding curve hesabının adresini zincir üstünde bul
+    const [bondingCurveKey] = PublicKey.findProgramAddressSync(
+      [BONDING_CURVE_SEED, tokenMint.toBuffer()],
+      PUMP_FUN_PROGRAM
+    );
+
+    console.log("Türetilen Bonding Curve Adresi:", bondingCurveKey.toBase58());
+
+    // Bonding curve hesabının bilgilerini zincirden çek
+    const accountInfo = await connection.getAccountInfo(bondingCurveKey);
+    if (!accountInfo) {
+      throw new Error(`Token'ın bonding curve hesabı bulunamadı (${bondingCurveKey.toBase58()}). Adresin doğru olduğundan veya token'ın oluşturulduğundan emin olun.`);
     }
 
-    // Moralis'in Pump.fun token bilgisi için API uç noktası
-    const moralisApiUrl = `https://solana-gateway.moralis.io/pump/v1/token/${PUMP_TOKEN_ADDRESS}`;
-
-    console.log("Moralis API'sine istek gönderiliyor:", moralisApiUrl );
-
-    const res = await fetch(moralisApiUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": apiKey,
-      },
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Moralis API'sinden başarısız cevap:", res.status, errorText);
-      throw new Error(`Moralis API'si ${res.status} durum koduyla başarısız oldu.`);
-    }
-
-    const tokenData = await res.json();
-    console.log("Moralis'ten gelen cevap:", JSON.stringify(tokenData, null, 2));
-
-    // Gelen veriden fiyatı ve sembolü ayıkla
-    // Moralis fiyatı doğrudan USD cinsinden 'usd_market_cap' / 'total_supply' olarak hesaplar
-    // veya doğrudan bir fiyat alanı sunabilir. Dönen veriye göre ayarlama yapalım.
-    // Dökümana göre, 'market_cap_usd' ve 'total_supply' alanları var.
+    // Gelen ham veriden (Buffer) rezervleri oku.
+    // Bu offsetler (8 ve 16) Pump.fun kontratının veri yapısına özeldir.
+    const virtualSolReserves = Number(accountInfo.data.readBigUInt64LE(8));
+    const virtualTokenReserves = Number(accountInfo.data.readBigUInt64LE(16));
     
-    const marketCapUsd = parseFloat(tokenData.market_cap_usd);
-    const totalSupply = parseFloat(tokenData.total_supply);
+    console.log("Sanal SOL Rezervi:", virtualSolReserves);
+    console.log("Sanal Token Rezervi:", virtualTokenReserves);
 
-    if (!marketCapUsd || !totalSupply || totalSupply === 0) {
-      throw new Error("API cevabında fiyat hesaplamak için gerekli veri (market_cap_usd, total_supply) bulunamadı.");
+    if (virtualTokenReserves === 0) {
+      throw new Error("Token rezervi sıfır, fiyat hesaplanamıyor (henüz hiç alım yapılmamış olabilir).");
     }
 
-    // Fiyatı hesapla: Market Cap / Total Supply
-    const priceInUsd = marketCapUsd / totalSupply;
-    const tokenSymbol = tokenData.symbol || "YOUR_TOKEN";
+    // 1. Token'ın anlık fiyatını SOL cinsinden hesapla
+    const priceInSol = virtualSolReserves / virtualTokenReserves;
 
-    if (typeof priceInUsd !== 'number' || isNaN(priceInUsd)) {
-      throw new Error("Hesaplanan fiyat verisi geçerli bir sayı değil.");
-    }
+    // 2. Anlık SOL/USD fiyatını al
+    const solPriceUsd = await getSolPriceInUsd();
+    console.log("Anlık SOL/USD Fiyatı:", solPriceUsd);
 
-    // Başarılı cevabı gönder
+    // 3. Token'ın USD cinsinden nihai fiyatını hesapla
+    const priceInUsd = priceInSol * solPriceUsd;
+    console.log("Hesaplanan USD Fiyatı:", priceInUsd);
+
+    // Ön yüzde görünecek token sembolü
+    const tokenSymbol = "YOUR_TOKEN"; // Kendi token sembolünüzü buraya yazın
+
     return response.status(200).json({
       token: tokenSymbol,
       price_in_usd: priceInUsd,
     });
 
   } catch (error) {
-    console.error("get-price API'sinde hata:", error);
+    console.error("get-price API'sinde KÖK HATA:", error);
     return response.status(500).json({
       message: "Token fiyatı alınırken sunucu tarafında bir hata oluştu.",
       error: error.message,
