@@ -4,39 +4,51 @@
 // BONK TOKEN'ININ RESMİ ADRESİ
 const TOKEN_ADDRESS = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
 
-// Jupiter'in herkese açık ve anahtarsız fiyat API'si uç noktası
-const JUPITER_PRICE_API = `https://price.jup.ag/v4/price?ids=${TOKEN_ADDRESS}`;
-
 // --- ANA API HANDLER ---
 export default async function handler(request, response ) {
   try {
-    console.log("Jupiter API'sine istek gönderiliyor:", JUPITER_PRICE_API);
+    const apiKey = process.env.MORALIS_API_KEY;
+    if (!apiKey) {
+      throw new Error("Moralis API anahtarı sunucu ortamında ayarlanmamış.");
+    }
 
-    const res = await fetch(JUPITER_PRICE_API);
+    // YENİ ve DOĞRU API UÇ NOKTASI (Sizin bulduğunuz)
+    const moralisApiUrl = `https://solana-gateway.moralis.io/token/mainnet/${TOKEN_ADDRESS}/price`;
+
+    console.log("Moralis GENEL TOKEN API'sine istek gönderiliyor:", moralisApiUrl );
+
+    const res = await fetch(moralisApiUrl, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey,
+      },
+    });
 
     if (!res.ok) {
       const errorText = await res.text();
-      console.error("Jupiter API'sinden başarısız cevap:", res.status, errorText);
-      throw new Error(`Jupiter API'si ${res.status} durum koduyla başarısız oldu.`);
+      console.error("Moralis API'sinden başarısız cevap:", res.status, errorText);
+      throw new Error(`Moralis API'si ${res.status} durum koduyla başarısız oldu.`);
     }
 
-    const result = await res.json();
-    console.log("Jupiter'den gelen cevap:", JSON.stringify(result, null, 2));
+    const priceData = await res.json();
+    console.log("Moralis'ten gelen cevap:", JSON.stringify(priceData, null, 2));
 
-    // Gelen verinin yapısını dikkatlice kontrol et
-    if (!result.data || !result.data[TOKEN_ADDRESS]) {
-      throw new Error("API cevabında beklenen token verisi bulunamadı. Jupiter bu token'ı henüz endekslememiş olabilir.");
+    // Gelen veriden fiyatı ayıkla. Bu API 'usdPrice' alanını döndürür.
+    const priceInUsd = priceData.usdPrice;
+
+    if (priceInUsd === undefined || priceInUsd === null) {
+      throw new Error("API cevabında 'usdPrice' alanı bulunamadı.");
     }
 
-    const tokenData = result.data[TOKEN_ADDRESS];
-    const priceInUsd = tokenData.price;
-
-    if (typeof priceInUsd !== 'number') {
+    if (typeof priceInUsd !== 'number' || isNaN(priceInUsd)) {
       throw new Error("Alınan fiyat verisi geçerli bir sayı değil.");
     }
 
-    // Jupiter genellikle sembolü de döndürür, onu kullanalım
-    const tokenSymbol = tokenData.mintSymbol || "BONK";
+    // Bu API sembolü döndürmez, bu yüzden manuel ekleyelim.
+    const tokenSymbol = "BONK"; 
+
+    console.log(`Başarıyla alındı: ${tokenSymbol} fiyatı = ${priceInUsd} USD`);
 
     // Başarılı cevabı gönder
     return response.status(200).json({
